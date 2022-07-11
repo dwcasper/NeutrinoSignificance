@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <ios>
 #include <exception>
+#include <algorithm>
 
 Significance::Significance(double tail, const GridPoint& observed)
 	: m_observed {observed}, m_q0Observed(observed)
@@ -60,20 +61,35 @@ double
 Significance::Integrate(double tail, GridPoint start)
 {
 	double safety = 0.95;
+	size_t granularity = 100000;
 	size_t index = AddToGrid(start);
-	double probabilitySum = Include(index);
+	double probabilitySum{ 0.0 };
+	Include(index);
 	std::cout << std::fixed;
-	std::cout.precision(14);
+	std::cout.precision(std::numeric_limits<double>::max_digits10);
 	while (1 - probabilitySum > safety * tail)
 	{
-		if (m_in.size() % 100000 == 1)
-			std::cout << "Points in sum: " << m_in.size() << " Probability integral: " << probabilitySum /* << " or " << std::accumulate(m_in.rbegin(), m_in.rend(), 0.0, [this](double val, size_t index) { return val + m_probability[index]; }) */ <<
-			" Total points: " << m_grid.size() << " Surface points: " << m_out.size() << std::endl;
+		if (m_in.size() % granularity == 0)
+		{
+			double increment = std::accumulate(m_in.begin(), m_in.end(), 0.0, [this](double val, size_t index) { return val + m_probability[index]; });
+			if ((probabilitySum + increment > probabilitySum) && (increment > (1 - probabilitySum)/1000.0))
+			{
+				probabilitySum += increment;
+				m_done.insert(m_in.begin(), m_in.end());
+				m_in.clear();
+			}
+			else
+			{
+				granularity *= 10;
+			}
+			std::cout << "Points in sum: " << m_done.size() + m_in.size() << " Probability integral: " << probabilitySum << " Increment: " << increment <<
+				" Total points: " << m_grid.size() << " Surface points: " << m_out.size() << std::endl;
+		}
 		auto itr = m_out.begin();
-		probabilitySum += Include(*itr);
+		Include(*itr);
 	}
 	m_out.clear();
-	return 1 - std::accumulate(m_in.rbegin(), m_in.rend(), 0.0, [this](double val, size_t index) { return val + m_probability[index]; });
+	return 1 - std::accumulate(m_done.rbegin(), m_done.rend(), 0.0, [this](double val, size_t index) { return val + m_probability[index]; });
 }
 
 size_t

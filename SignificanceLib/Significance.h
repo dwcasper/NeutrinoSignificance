@@ -61,7 +61,8 @@ private:
 	std::map<GridPoint, size_t> m_lookup;
 	std::vector<double> m_probability;
 	std::vector<double> m_q0;
-	std::set<size_t> m_in;
-	std::set<size_t, ByProbability> m_out {{},ByProbability(this)};
+	std::set<size_t, ByProbability> m_done {{}, ByProbability(this)};
+	std::set<size_t, ByProbability> m_in   {{}, ByProbability(this)};
+	std::set<size_t, ByProbability> m_out  {{}, ByProbability(this)};
 };
 
