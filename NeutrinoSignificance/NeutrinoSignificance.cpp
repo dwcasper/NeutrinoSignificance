@@ -6,35 +6,41 @@
 #include <string>
 #include <vector>
 #include <exception>
-#include "../SignificanceLib/Significance.h"
+//#include "../SignificanceLib/Significance.h"
+#include "../SignificanceLib/SignificanceMC.h"
 
 int main(int argc, char* argv[])
 {
-    size_t observed{ 0 };
+    //size_t observed{ 0 };
+    GridPoint observed{ 0,0,0 };
     for (int i = 0; i < argc - 1; i++)
     {
         size_t word;
         std::stringstream s{ argv[i + 1] };
         s >> word;
-        if (i == 0 && word > (Significance::grid0 >> Significance::shift0) || i == 1 && word > (Significance::grid1 >> Significance::shift1) || i == 2 && word >> (Significance::grid2 >> Significance::shift2))
-            throw std::out_of_range("Input measurement out of allowed range.");
-        observed |= (word << (i == 0 ? Significance::shift0 : (i == 1 ? Significance::shift1 : Significance::shift2)));
+        observed[i] = word;
+        //if (i == 0 && word > (Significance::grid0 >> Significance::shift0) || i == 1 && word > (Significance::grid1 >> Significance::shift1) || i == 2 && word >> (Significance::grid2 >> Significance::shift2))
+        //    throw std::out_of_range("Input measurement out of allowed range.");
+        //observed |= (word << (i == 0 ? Significance::shift0 : (i == 1 ? Significance::shift1 : Significance::shift2)));
     }
 
-    std::cout << "Decoded inputs:" << std::endl;
-    std::cout << ((observed & Significance::grid2) >> Significance::shift2) << std::endl;
-    std::cout << ((observed & Significance::grid1) >> Significance::shift1) << std::endl;
-    std::cout << ((observed & Significance::grid0) >> Significance::shift0) << std::endl;
+    //std::cout << "Decoded inputs:" << std::endl;
+    //std::cout << ((observed & Significance::grid2) >> Significance::shift2) << std::endl;
+    //std::cout << ((observed & Significance::grid1) >> Significance::shift1) << std::endl;
+    //std::cout << ((observed & Significance::grid0) >> Significance::shift0) << std::endl;
 
-    Significance* significance = new Significance(1.0e-8, observed);
+    SignificanceMC mc{ observed };
+    double p = mc.GetPValue(1000000000);
+    std::cout << "Returned p = " << p << std::endl;
+    //Significance* significance = new Significance(1.0e-8, observed);
 
-    std::cout << "Tail = " << significance->GetTail() << std::endl;
-    std::cout << "q0Observed = " << significance->Get_q0Observed() << std::endl;
-    char c;
-    std::cout << "Enter a character to terminate" << std::endl;
-    std::cin >> c;
+    //std::cout << "Tail = " << significance->GetTail() << std::endl;
+    //std::cout << "q0Observed = " << significance->Get_q0Observed() << std::endl;
+    //char c;
+    //std::cout << "Enter a character to terminate" << std::endl;
+    //std::cin >> c;
 
-    delete significance;
+    //delete significance;
 
 }
 

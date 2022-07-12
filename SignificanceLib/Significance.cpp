@@ -11,7 +11,7 @@
 #include <algorithm>
 
 Significance::Significance(double tail, const GridPoint& observed)
-	: m_observed {observed}, m_q0Observed(observed)
+	: m_observed {observed}, m_q0Observed{Calc_q0(observed)}
 { 
 	// Get global best parameters and create distributions
 	std::array<size_t, 3> point{ (observed & grid0) >> shift0, (observed & grid1) >> shift1, (observed & grid2) >> shift2 };
