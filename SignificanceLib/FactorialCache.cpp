@@ -16,7 +16,7 @@ FactorialCache::Lookup(size_t n)
 {
 	// simple case - value already present
 	auto itr = m_cache.lower_bound(n);
-	if (itr->first == n) return itr->second;
+	if (itr != m_cache.end() && itr->first == n) return itr->second;
 
 	// otherwise, add it
 	try

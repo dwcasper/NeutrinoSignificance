@@ -30,6 +30,7 @@ private:
 		double upper;
 	};
 
+	BatchResult HandleBatch(double lower, double upper, bool relaunch) const;
 	BatchResult RunBatch(double lower, double upper) const;
 
 	Sample&& GenerateSample() const;
@@ -48,6 +49,7 @@ private:
 
 	double m_q0Observed;
 	double m_batchFraction{ 0.01 }; // Fraction of total integral to accumulate before adding to get new total
-	size_t m_minBatchSize{ 10000 }; // Minimum number of samples in batch, regardless of fraction
+	size_t m_minBatchSize{ 100000 }; // Minimum number of samples in batch, regardless of fraction
+	const size_t k_maxWorkers = 20;
 };
 

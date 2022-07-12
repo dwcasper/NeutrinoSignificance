@@ -1,6 +1,8 @@
 #include "pch.h"
 #include <iostream>
 #include <numeric>
+#include <future>
+#include <chrono>
 #include "SignificanceMC.h"
 #include "LogNormal.h"
 #include "LogPoisson.h"
@@ -63,8 +65,13 @@ SignificanceMC::GetPValue(size_t N)
 		//		incOver += sample.second;
 		//	}
 		//}
-		BatchResult result = RunBatch(totalUnder, totalOver);
+		//std::future<BatchResult> batchResult = std::async(std::launch::async, &SignificanceMC::RunBatch, this, totalUnder, totalOver );
+
+		//batchResult.wait();
+		//auto result = batchResult.get();
+		//BatchResult result = RunBatch(totalUnder, totalOver);
 		//std::cout << result.count << "/" << result.lower << "/" << result.upper << std::endl;
+		auto result = HandleBatch(totalUnder, totalOver, n < N);
 		totalOver += result.upper;
 		totalUnder += result.lower;
 		n += result.count;
@@ -74,6 +81,30 @@ SignificanceMC::GetPValue(size_t N)
 	return p;
 }
 
+SignificanceMC::BatchResult
+SignificanceMC::HandleBatch(double under, double over, bool relaunch) const
+{
+	static std::vector<std::future<BatchResult> > workers;
+
+	// Make sure the requested number of workers have been started
+	while (relaunch && (workers.size() < k_maxWorkers)) workers.emplace_back(std::async(std::launch::async, &SignificanceMC::RunBatch, this, under, over));
+
+	// Wait until a thread finishes, and return its results
+	while (true)
+	{
+		for (auto itr = workers.begin(); itr != workers.end(); ++itr)
+		{
+			if (itr->wait_for(std::chrono::milliseconds{ 500 }) == std::future_status::ready)
+			{
+				auto result = itr->get();
+				workers.erase(std::remove_if(itr, workers.end(), [](std::future<BatchResult> const& f) {return !f.valid(); }), workers.end());
+				return result;
+			}
+		}
+	}
+
+
+}
 
 SignificanceMC::BatchResult
 SignificanceMC::RunBatch(double under, double over) const
