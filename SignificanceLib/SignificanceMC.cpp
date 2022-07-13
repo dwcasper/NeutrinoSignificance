@@ -6,17 +6,12 @@
 #include "SignificanceMC.h"
 #include "LogNormal.h"
 #include "LogPoisson.h"
+#include "boost/math/special_functions/beta.hpp"
 
 SignificanceMC::SignificanceMC(const GridPoint& point)
-	: m_observation {point}, m_q0Observed{ Calc_q0(point) }
+	: m_observation {point}, m_q0Observed{ Calc_q0(point) }, kAlphaOneSigma { 1.0 - std::erf(1.0/std::sqrt(2.0)) }
 {
 	std::cout << "Observed point: " << point[0] << "/" << point[1] << "/" << point[2] << std::endl;
-	//m_shat = point[0] - pow(((double)point[1]) / 2, 2) / point[2];
-	//m_bhat = pow(((double)point[1]) / 2 + point[2], 2) / point[2];
-	//m_phat = ((double)point[1]) / (point[1] + 2 * point[2]);
-	//m_globalDist.push_back(new LogPoisson(m_shat + m_phat * m_phat * m_bhat));
-	//m_globalDist.push_back(new LogNormal(2 * m_phat * (1 - m_phat) * m_bhat));
-	//m_globalDist.push_back(new LogNormal((1 - m_phat) * (1 - m_phat) * m_bhat));
 
 	// Get background-only best parameters and create distributions
 	m_bhatBkg = (double)std::accumulate(point.cbegin(), point.cend(), (size_t)0);
@@ -25,10 +20,6 @@ SignificanceMC::SignificanceMC(const GridPoint& point)
 	m_bkgDist.push_back(new LogPoisson(m_phatBkg * m_phatBkg * m_bhatBkg));
 	m_bkgDist.push_back(new LogNormal(2 * m_phatBkg * (1 - m_phatBkg) * m_bhatBkg));
 	m_bkgDist.push_back(new LogNormal((1 - m_phatBkg) * (1 - m_phatBkg) * m_bhatBkg));
-	// Get approximate best data point for background-only
-	//size_t mu0 = (size_t)round(m_phatBkg * m_phatBkg * m_bhatBkg);
-	//size_t mu1 = (size_t)round(2 * m_phatBkg * (1 - m_phatBkg) * m_bhatBkg);
-	//size_t mu2 = (size_t)round((1 - m_phatBkg) * (1 - m_phatBkg) * m_bhatBkg);
 }
 
 SignificanceMC::~SignificanceMC()
@@ -47,36 +38,19 @@ SignificanceMC::GetPValue(size_t N)
 	double totalOver{ 0.0 };
 	double p{ 0.0 };
 	size_t n{ 0 };
+	double confLow{ 0 };
+	double confHigh{ 0 };
 	std::cout.precision(std::numeric_limits<double>::max_digits10);
-	while (n < N)
+	while (n < N || (confHigh-confLow)/p > 0.2)
 	{
-		//size_t nBatch{ 0 };
-		//double incUnder{ 0.0 };
-		//double incOver{ 0.0 };
-		//while (nBatch++ < m_minBatchSize || incUnder < m_batchFraction * totalUnder || incOver < m_batchFraction * totalOver)
-		//{
-		//	Sample sample = GenerateSample();
-		//	if (Calc_q0(sample.first) < m_q0Observed)
-		//	{
-		//		incUnder += sample.second;
-		//	}
-		//	else
-		//	{
-		//		incOver += sample.second;
-		//	}
-		//}
-		//std::future<BatchResult> batchResult = std::async(std::launch::async, &SignificanceMC::RunBatch, this, totalUnder, totalOver );
-
-		//batchResult.wait();
-		//auto result = batchResult.get();
-		//BatchResult result = RunBatch(totalUnder, totalOver);
-		//std::cout << result.count << "/" << result.lower << "/" << result.upper << std::endl;
-		auto result = HandleBatch(totalUnder, totalOver, n < N);
+		auto result = HandleBatch(totalUnder, totalOver, true);
 		totalOver += result.upper;
 		totalUnder += result.lower;
 		n += result.count;
 		p = totalOver / (totalOver + totalUnder);
-    	std::cout << "After " << n << " points, TotalProbability = " << std::fixed << (totalOver + totalUnder) / n << " Under: " << totalUnder / n << " Over: " << std::scientific << totalOver / n << " pValue: " << p << " +/- " << sqrt(n * p * (1 - p)) / n << std::endl;
+		confLow = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv(totalOver, totalUnder + 1, kAlphaOneSigma / 2) : p);
+		confHigh = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv(totalOver + 1, totalUnder, 1 - kAlphaOneSigma / 2) : p);
+    	std::cout << "After " << n << " points, TotalProbability = " << std::fixed << (totalOver + totalUnder) / n << " Under: " << totalUnder / n << " Over: " << std::scientific << totalOver / n << " pValue: " << p << " +/- " << sqrt(n * p * (1 - p)) / n << " {" << confLow << ", " << confHigh << "}" << std::endl;
 	}
 	return p;
 }
@@ -110,7 +84,7 @@ SignificanceMC::BatchResult
 SignificanceMC::RunBatch(double under, double over) const
 {
 	BatchResult result { 0, 0.0, 0.0 };
-	while (result.count < m_minBatchSize || result.lower < m_batchFraction * under || result.upper < m_batchFraction * over)
+	while (result.count < m_minBatchSize || result.lower < std::sqrt(under) || result.upper < std::sqrt(over))
 	{
 		Sample sample = GenerateSample();
 		if (Calc_q0(sample.first) < m_q0Observed)
@@ -128,7 +102,7 @@ SignificanceMC::RunBatch(double under, double over) const
 	return result;
 }
 
-Sample&&
+Sample
 SignificanceMC::GenerateSample() const
 {
 	std::vector<size_t> points;
@@ -139,7 +113,7 @@ SignificanceMC::GenerateSample() const
 		points.push_back(value);
 		logWeight += p->LogWeight(value);
 	}
-	return std::move(std::pair<GridPoint, double> {GridPoint {points[0], points[1], points[2]}, exp(logWeight)});
+	return std::pair<GridPoint, double> {GridPoint {points[0], points[1], points[2]}, exp(logWeight)};
 }
 
 double

@@ -10,8 +10,6 @@ class SignificanceMC
 public:
 	SignificanceMC(const GridPoint& observation);
 	~SignificanceMC();
-	void SetBatchFraction(double fraction) { m_batchFraction = fraction; }
-	double GetBatchFraction() const { return m_batchFraction; }
 	void SetMinBatchSize(size_t size) { m_minBatchSize = size; }
 	size_t GetMinBatchSize() const { return m_minBatchSize; }
 	double GetPValue(size_t N);
@@ -33,7 +31,7 @@ private:
 	BatchResult HandleBatch(double lower, double upper, bool relaunch) const;
 	BatchResult RunBatch(double lower, double upper) const;
 
-	Sample&& GenerateSample() const;
+	Sample GenerateSample() const;
 	double Calc_q0(const GridPoint grid) const;
 
 	const GridPoint m_observation;
@@ -48,8 +46,8 @@ private:
 	std::vector<IProposal*> m_bkgDist;
 
 	double m_q0Observed;
-	double m_batchFraction{ 0.01 }; // Fraction of total integral to accumulate before adding to get new total
-	size_t m_minBatchSize{ 100000 }; // Minimum number of samples in batch, regardless of fraction
+	size_t m_minBatchSize{ 1000000 }; // Minimum number of samples in batch, regardless of fraction
 	const size_t k_maxWorkers = 20;
+	const double kAlphaOneSigma;
 };
 
