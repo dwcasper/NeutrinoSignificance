@@ -30,9 +30,6 @@
     <ClInclude Include="SignificanceMC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LogNormal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="IProposal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -54,9 +51,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SignificanceMC.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LogNormal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FactorialCache.cpp">

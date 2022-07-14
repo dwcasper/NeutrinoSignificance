@@ -9,8 +9,6 @@
 #include "LogPoisson.h"
 #include "boost/math/special_functions/beta.hpp"
 
-std::mutex mtx;
-
 SignificanceMC::SignificanceMC(const GridPoint& point)
 	: m_observation {point}, m_q0Observed{ Calc_q0(point) }, kAlphaOneSigma { 1.0 - std::erf(1.0/std::sqrt(2.0)) }
 {
@@ -53,10 +51,7 @@ SignificanceMC::GetPValue()
 		p = totalOver / (totalOver + totalUnder);
 		confLow = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv(totalOver, totalUnder + 1, kAlphaOneSigma / 2) : p);
 		confHigh = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv(totalOver + 1, totalUnder, 1 - kAlphaOneSigma / 2) : p);
-		{
-			std::lock_guard<std::mutex> guard{ mtx };
-			std::cout << "After " << n << " points, TotalProbability = " << std::fixed << (totalOver + totalUnder) / n << " Under: " << totalUnder / n << " Over: " << std::scientific << totalOver / n << " pValue: " << p << " +/- " << sqrt(n * p * (1 - p)) / n << " {" << confLow << ", " << confHigh << "}" << std::endl;
-		}
+		std::cout << "After " << n << " points, TotalProbability = " << std::fixed << (totalOver + totalUnder) / n << " Under: " << totalUnder / n << " Over: " << std::scientific << totalOver / n << " pValue: " << p << " +/- " << sqrt(n * p * (1 - p)) / n << " {" << confLow << ", " << confHigh << "}" << std::endl;
 	}
 	return p;
 }
@@ -103,7 +98,6 @@ SignificanceMC::RunBatch(double under, double over) const
 		}
 		result.count++;
 	}
-	//std::cout << result.count << ":" << result.lower << ":" << result.upper << std::endl;
 
 	return result;
 }
@@ -119,13 +113,7 @@ SignificanceMC::GenerateSample() const
 		points.push_back(value);
 		logWeight += p->LogWeight(value);
 	}
-	double weight = exp(logWeight);
-	if (weight <= 0 || weight > 100 || weight != weight)
-	{
-		std::lock_guard<std::mutex> guard{ mtx };
-		std::cout << "Unexpected weight: " << weight << " for sample (" << points[0] << ", " << points[1] << ", " << points[2] << ")" << std::endl;
-	}
-	return std::pair<GridPoint, double> {GridPoint {points[0], points[1], points[2]}, weight};
+	return std::pair<GridPoint, double> {GridPoint {points[0], points[1], points[2]}, exp(logWeight)};
 }
 
 double
