@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "Significance.h"
 #include "LogPoisson.h"
 #include <stdexcept>

@@ -1,4 +1,3 @@
-#include "pch.h"
 #include <iostream>
 #include <numeric>
 #include <future>
@@ -35,29 +34,31 @@ SignificanceMC::~SignificanceMC()
 double
 SignificanceMC::GetPValue()
 {
-	double totalUnder{ 0.0 };
-	double totalOver{ 0.0 };
+	size_t totalUnder{ 0 };
+	size_t totalOver{ 0 };
 	double p{ 0.0 };
+	double sigmaP{ 0.0 };
 	size_t n{ 0 };
 	double confLow{ 0 };
 	double confHigh{ 0 };
 	std::cout.precision(std::numeric_limits<double>::max_digits10);
-	while (p == 0 || (confHigh-confLow)/(2*p) > kRelativeError)
+	while (p == 0 || sigmaP == 0 || sigmaP/p > kRelativeError)
 	{
 		auto result = HandleBatch(totalUnder, totalOver);
 		totalOver += result.upper;
 		totalUnder += result.lower;
-		n += result.count;
-		p = totalOver / (totalOver + totalUnder);
-		confLow = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv(totalOver, totalUnder + 1, kAlphaOneSigma / 2) : p);
-		confHigh = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv(totalOver + 1, totalUnder, 1 - kAlphaOneSigma / 2) : p);
-		std::cout << "After " << n << " points, TotalProbability = " << std::fixed << (totalOver + totalUnder) / n << " Under: " << totalUnder / n << " Over: " << std::scientific << totalOver / n << " pValue: " << p << " +/- " << sqrt(n * p * (1 - p)) / n << " {" << confLow << ", " << confHigh << "}" << std::endl;
+		n += (result.upper + result.lower);
+		p = ((double)totalOver) / n;
+		sigmaP = sqrt(n * p * (1 - p)) / n;
+		confLow = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv((double)totalOver, (double)totalUnder + 1, kAlphaOneSigma / 2) : p);
+		confHigh = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv((double)totalOver + 1, (double)totalUnder, 1 - kAlphaOneSigma / 2) : p);
+		std::cout << "After " << n << " points, Under: " << totalUnder  << " Over: " << totalOver << " pValue: " << p << " +/- " << sigmaP << " {" << confLow << ", " << confHigh << "}" << std::endl;
 	}
 	return p;
 }
 
 SignificanceMC::BatchResult
-SignificanceMC::HandleBatch(double under, double over) const
+SignificanceMC::HandleBatch(size_t under, size_t over) const
 {
 	static std::vector<std::future<BatchResult> > workers;
 
@@ -82,38 +83,22 @@ SignificanceMC::HandleBatch(double under, double over) const
 }
 
 SignificanceMC::BatchResult
-SignificanceMC::RunBatch(double under, double over) const
+SignificanceMC::RunBatch(size_t under, size_t over) const
 {
-	BatchResult result { 0, 0.0, 0.0 };
-	while (result.count < m_minBatchSize || result.lower < std::sqrt(under) || result.upper < std::sqrt(over))
+	BatchResult result { 0, 0 };
+	while (result.lower + result.upper < m_minBatchSize || result.lower < std::sqrt((double)under) || result.upper < std::sqrt((double)over))
 	{
-		Sample sample = GenerateSample();
-		if (Calc_q0(sample.first) < m_q0Observed)
+		GridPoint sample = GenerateSample();
+		if (Calc_q0(sample) < m_q0Observed)
 		{
-			result.lower += sample.second;
+			result.lower++;
 		}
 		else
 		{
-			result.upper += sample.second;
+			result.upper++;
 		}
-		result.count++;
 	}
-
 	return result;
-}
-
-Sample
-SignificanceMC::GenerateSample() const
-{
-	std::vector<size_t> points;
-	double logWeight{ 0 };
-	for (IProposal* p : m_bkgDist)
-	{
-		size_t value = p->Generate();
-		points.push_back(value);
-		logWeight += p->LogWeight(value);
-	}
-	return std::pair<GridPoint, double> {GridPoint {points[0], points[1], points[2]}, exp(logWeight)};
 }
 
 double

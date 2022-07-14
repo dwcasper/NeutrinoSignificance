@@ -1,10 +1,9 @@
 #pragma once
 #include <array>
 #include <vector>
+#include "IProposal.h"
 using GridPoint = std::array<size_t, 3>;
-using Sample = std::pair<GridPoint, double>;
 class LogNormal;
-class IProposal;
 class SignificanceMC
 {
 public:
@@ -23,26 +22,21 @@ private:
 	struct BatchResult
 	{
 	public:
-		size_t count;
-		double lower;
-		double upper;
+		size_t lower;
+		size_t upper;
 	};
 
-	BatchResult HandleBatch(double lower, double upper) const;
-	BatchResult RunBatch(double lower, double upper) const;
+	BatchResult HandleBatch(size_t lower, size_t upper) const;
+	BatchResult RunBatch(size_t lower, size_t upper) const;
 
-	Sample GenerateSample() const;
+	GridPoint GenerateSample() const { return GridPoint{ m_bkgDist[0]->Generate(), m_bkgDist[1]->Generate(), m_bkgDist[2]->Generate() }; }
 	double Calc_q0(const GridPoint grid) const;
 
 	const GridPoint m_observation;
-	//double m_shat;
-	//double m_phat;
-	//double m_bhat;
 	double m_phatBkg;
 	double m_bhatBkg;
 	std::array<double, 3> m_means;
 
-	//std::vector<IProposal*> m_globalDist;
 	std::vector<IProposal*> m_bkgDist;
 
 	double m_q0Observed;
