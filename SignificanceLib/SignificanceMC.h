@@ -11,7 +11,20 @@ public:
 	~SignificanceMC();
 	void SetMinBatchSize(size_t size) { m_minBatchSize = size; }
 	size_t GetMinBatchSize() const { return m_minBatchSize; }
-	double GetPValue();
+
+	struct PResult
+	{
+	public:
+		double p;
+		double sigmaP;
+		double pLow;
+		double pHigh;
+		double z;
+		double zLow;
+		double zHigh;
+	};
+
+	PResult GetPValue(size_t nWorkers = 1, double relativeErrorTarget = 0.01);
 
 private:
 	SignificanceMC(const SignificanceMC& rhs) = delete;
@@ -26,7 +39,7 @@ private:
 		size_t upper;
 	};
 
-	BatchResult HandleBatch(size_t lower, size_t upper) const;
+	BatchResult HandleBatch(size_t nWorkers, size_t lower, size_t upper) const;
 	BatchResult RunBatch(size_t lower, size_t upper) const;
 
 	GridPoint GenerateSample() const { return GridPoint{ m_bkgDist[0]->Generate(), m_bkgDist[1]->Generate(), m_bkgDist[2]->Generate() }; }
@@ -41,8 +54,6 @@ private:
 
 	double m_q0Observed;
 	size_t m_minBatchSize{ 1000000 }; // Minimum number of samples in batch, regardless of fraction
-	const size_t k_maxWorkers = 20;
 	const double kAlphaOneSigma;
-	const double kRelativeError = 0.01;
 };
 

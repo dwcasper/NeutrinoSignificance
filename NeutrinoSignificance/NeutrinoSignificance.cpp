@@ -20,8 +20,11 @@ int main(int argc, char* argv[])
     }
 
     SignificanceMC mc{ observed };
-    double p = mc.GetPValue();
-    std::cout << "Returned p = " << p << std::endl;
-
+    SignificanceMC::PResult pResult = mc.GetPValue(20, 0.005);
+    std::cout << "pValue:  " << pResult.p << std::endl;
+    std::cout << "sigmaP = " << pResult.sigmaP << std::endl;
+    std::cout << "1 sigma confidence interval: {" << pResult.pLow << " - " << pResult.pHigh << "}" << std::endl;
+    std::cout << "Significance (in standard deviations): " << pResult.z << std::endl;
+    std::cout << "Significance confidence interval: {" << pResult.zLow << " - " << pResult.zHigh << "}" << std::endl;
 }
 

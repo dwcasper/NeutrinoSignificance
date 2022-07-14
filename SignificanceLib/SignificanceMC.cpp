@@ -7,6 +7,7 @@
 #include "LogNormal.h"
 #include "LogPoisson.h"
 #include "boost/math/special_functions/beta.hpp"
+#include "boost/math/special_functions/erf.hpp"
 
 SignificanceMC::SignificanceMC(const GridPoint& point)
 	: m_observation {point}, m_q0Observed{ Calc_q0(point) }, kAlphaOneSigma { 1.0 - std::erf(1.0/std::sqrt(2.0)) }
@@ -31,8 +32,8 @@ SignificanceMC::~SignificanceMC()
 	m_bkgDist.clear();
 }
 
-double
-SignificanceMC::GetPValue()
+SignificanceMC::PResult
+SignificanceMC::GetPValue(size_t nWorkers, double relativeErrorTarget)
 {
 	size_t totalUnder{ 0 };
 	size_t totalOver{ 0 };
@@ -42,9 +43,9 @@ SignificanceMC::GetPValue()
 	double confLow{ 0 };
 	double confHigh{ 0 };
 	std::cout.precision(std::numeric_limits<double>::max_digits10);
-	while (p == 0 || sigmaP == 0 || sigmaP/p > kRelativeError)
+	while (p == 0 || sigmaP == 0 || sigmaP/p > relativeErrorTarget)
 	{
-		auto result = HandleBatch(totalUnder, totalOver);
+		auto result = HandleBatch(nWorkers, totalUnder, totalOver);
 		totalOver += result.upper;
 		totalUnder += result.lower;
 		n += (result.upper + result.lower);
@@ -52,18 +53,18 @@ SignificanceMC::GetPValue()
 		sigmaP = sqrt(n * p * (1 - p)) / n;
 		confLow = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv((double)totalOver, (double)totalUnder + 1, kAlphaOneSigma / 2) : p);
 		confHigh = (totalUnder > 0 && totalOver > 0 ? boost::math::ibeta_inv((double)totalOver + 1, (double)totalUnder, 1 - kAlphaOneSigma / 2) : p);
-		std::cout << "After " << n << " points, Under: " << totalUnder  << " Over: " << totalOver << " pValue: " << p << " +/- " << sigmaP << " {" << confLow << ", " << confHigh << "}" << std::endl;
+		std::cout << "After " << n << " points, Under: " << totalUnder  << " Over: " << totalOver << " pValue: " << p << " +/- " << sigmaP << " {" << confLow << ", " << confHigh << "} significance: " << (p > 0 ? std::sqrt(2.0) * boost::math::erfc_inv(p / 2) : 0) << std::endl;
 	}
-	return p;
+	return PResult{ p, sigmaP, confLow, confHigh, std::sqrt(2.0)*boost::math::erfc_inv(p/2), std::sqrt(2.0) * boost::math::erfc_inv(confLow / 2), std::sqrt(2.0) * boost::math::erfc_inv(confHigh / 2) };
 }
 
 SignificanceMC::BatchResult
-SignificanceMC::HandleBatch(size_t under, size_t over) const
+SignificanceMC::HandleBatch(size_t nWorkers, size_t under, size_t over) const
 {
 	static std::vector<std::future<BatchResult> > workers;
 
 	// Make sure the requested number of workers have been started
-	while (workers.size() < k_maxWorkers) workers.emplace_back(std::async(std::launch::async, &SignificanceMC::RunBatch, this, under, over));
+	while (workers.size() < nWorkers) workers.emplace_back(std::async(std::launch::async, &SignificanceMC::RunBatch, this, under, over));
 
 	// Wait until a thread finishes, and return its results
 	while (true)
@@ -78,10 +79,9 @@ SignificanceMC::HandleBatch(size_t under, size_t over) const
 			}
 		}
 	}
-
-
 }
 
+// This is the function run by worker threads
 SignificanceMC::BatchResult
 SignificanceMC::RunBatch(size_t under, size_t over) const
 {
@@ -105,6 +105,7 @@ double
 SignificanceMC::Calc_q0(GridPoint point) const
 {
 	if (point[1] * point[1] >= 4 * point[0] * point[2]) return 0; // Negative signal -> no discovery significance
+	// From Mathematica solution for best background-only fit
 	return 2 * (point[1] * log(2.0 * point[1]) +
 		point[0] * log(4.0 * point[0]) -
 		(point[1] + 2 * point[0]) * log(point[1] + 2.0 * point[0]) +
