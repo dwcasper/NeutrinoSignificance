@@ -160,13 +160,11 @@
     <ClInclude Include="pcg_extras.hpp" />
     <ClInclude Include="pcg_random.hpp" />
     <ClInclude Include="pcg_uint128.hpp" />
-    <ClInclude Include="Significance.h" />
     <ClInclude Include="SignificanceMC.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FactorialCache.cpp" />
     <ClCompile Include="LogPoisson.cpp" />
-    <ClCompile Include="Significance.cpp" />
     <ClCompile Include="SignificanceMC.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

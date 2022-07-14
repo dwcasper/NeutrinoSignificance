@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Significance.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LogPoisson.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -41,9 +38,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Significance.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LogPoisson.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
