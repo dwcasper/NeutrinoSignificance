@@ -12,7 +12,7 @@ public:
 	~SignificanceMC();
 	void SetMinBatchSize(size_t size) { m_minBatchSize = size; }
 	size_t GetMinBatchSize() const { return m_minBatchSize; }
-	double GetPValue(size_t N);
+	double GetPValue();
 
 private:
 	SignificanceMC(const SignificanceMC& rhs) = delete;
@@ -28,7 +28,7 @@ private:
 		double upper;
 	};
 
-	BatchResult HandleBatch(double lower, double upper, bool relaunch) const;
+	BatchResult HandleBatch(double lower, double upper) const;
 	BatchResult RunBatch(double lower, double upper) const;
 
 	Sample GenerateSample() const;
@@ -49,5 +49,6 @@ private:
 	size_t m_minBatchSize{ 1000000 }; // Minimum number of samples in batch, regardless of fraction
 	const size_t k_maxWorkers = 20;
 	const double kAlphaOneSigma;
+	const double kRelativeError = 0.01;
 };
 

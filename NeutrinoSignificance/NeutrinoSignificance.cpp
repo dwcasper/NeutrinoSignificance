@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     //std::cout << ((observed & Significance::grid0) >> Significance::shift0) << std::endl;
 
     SignificanceMC mc{ observed };
-    double p = mc.GetPValue(1000000000);
+    double p = mc.GetPValue();
     std::cout << "Returned p = " << p << std::endl;
     //Significance* significance = new Significance(1.0e-8, observed);
 
